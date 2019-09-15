@@ -5,18 +5,15 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 import quakeLogParser.classes.Game;
 
 public class LogReader {
 
+	//Carrega o BufferedReader de arquivo com o arquivo de logs carregados
 	public BufferedReader getBuffer(String file) {
 
 		BufferedReader buffer = null;
@@ -34,6 +31,7 @@ public class LogReader {
 
 	}
 
+	//Método responsável por realizar o parse do log e retornar uma lista de objetos do tipo Game que terá as informações de cada partida
 	public List<Game> readGames(BufferedReader buffer) {
 
 		List<Game> games = new ArrayList<Game>();
@@ -45,6 +43,7 @@ public class LogReader {
 
 			Game game = null;
 			Map<String, Integer> playersKills = new HashMap<String, Integer>();
+			Map<String, Integer> killMeans = new HashMap<String, Integer>();
 
 			boolean activeGame = false;
 			int idGame = 0;
@@ -57,8 +56,11 @@ public class LogReader {
 					if (linha.contains("InitGame:")) {
 						game.setTotalKills(totalGameKill);
 						game.setPlayersKills(playersKills);
+						game.setKillsByMeans(killMeans);
 						games.add(game);
 						playersKills = new HashMap<String, Integer>();
+						killMeans = new HashMap<String, Integer>();
+
 						totalGameKill = 0;
 						game = new Game(idGame);
 						idGame++;
@@ -68,8 +70,10 @@ public class LogReader {
 					if (linha.contains("ShutdownGame:")) {
 						game.setTotalKills(totalGameKill);
 						game.setPlayersKills(playersKills);
+						game.setKillsByMeans(killMeans);
 						games.add(game);
 						playersKills = new HashMap<String, Integer>();
+						killMeans = new HashMap<String, Integer>();
 						totalGameKill = 0;
 						activeGame = false;
 
@@ -104,8 +108,14 @@ public class LogReader {
 									playersKills.put(linhaPlayer, qtdeKills + 1);
 								} else
 									playersKills.put(linhaPlayer, 1);
-
 							}
+
+							String mean = linha.substring(linha.indexOf("MOD_"));
+							if (killMeans.containsKey(mean)) {
+								int kills = killMeans.get(mean);
+								killMeans.put(mean, kills + 1);
+							} else
+								killMeans.put(mean, 1);
 						}
 					}
 
@@ -117,7 +127,7 @@ public class LogReader {
 					}
 				}
 
-				linha = buffer.readLine(); // lê da segunda até a última linha
+				linha = buffer.readLine();
 			}
 		} catch (IOException e) {
 			System.err.print("Erro ao ler arquivo de log");
@@ -126,64 +136,6 @@ public class LogReader {
 
 		return games;
 
-	}
-
-	public void reportGames(List<Game> games) {
-
-		Iterator<Game> it = games.iterator();
-
-		while (it.hasNext()) {
-			Game game = it.next();
-
-			String id = "Game_" + game.getId();
-
-			System.out.println(id + ": ");
-			System.out.println("total kills:" + game.getTotalKills());
-			System.out.print("player: [");
-			for (Map.Entry<String, Integer> pair : game.getPlayersKills().entrySet()) {
-				System.out.print(pair.getKey() + ", ");
-			}
-			System.out.println("]");
-
-			System.out.println("kills: ");
-
-			for (Map.Entry<String, Integer> pair : game.getPlayersKills().entrySet()) {
-				System.out.print(pair.getKey() + ": ");
-				System.out.print(pair.getValue() + ",");
-				System.out.println("");
-			}
-			System.out.println("======================");
-
-		}
-	}
-
-	public void ranking(List<Game> games) {
-
-		Iterator<Game> it = games.iterator();
-
-		while (it.hasNext()) {
-			Game game = it.next();
-
-			SortedMap<Integer, String> map = new TreeMap<Integer, String>(Collections.reverseOrder());
-
-			for (Map.Entry<String, Integer> pair : game.getPlayersKills().entrySet()) {
-				map.put(pair.getValue(), pair.getKey());
-			}
-			
-			String id = "Game_" + game.getId();
-
-			System.out.println("Ranking do " + id);
-			System.out.println("");
-
-			int x = 1;
-			for (Map.Entry<Integer, String> mapPair : map.entrySet()) {
-				System.out.println(x + ". " + mapPair.getValue());
-				x++;
-			}
-			System.out.println("================================");
-			System.out.println("");
-
-		}
 	}
 
 }
